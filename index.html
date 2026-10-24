@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Randka?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #ffccd5;
+    color: #fff;
+    font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+    font-weight: 800;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+  }
+  h1 { font-size: 2.2rem; padding: 0 20px; margin-bottom: 30px; }
+  .buttons { display: flex; justify-content: center; align-items: center; gap: 10px; }
+  button {
+    background: #590d22;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0.45em 1em;
+    transition: all 0.8s ease;
+  }
+  button { font-family: inherit; font-weight: 800; }
+  button.big { font-size: 28px; }
+  button.small { font-size: 9px; }
+  button.huge { font-size: 48px; }
+  #nie.corner { font-size: 6px; }
+
+  /* ekrany po kliknięciu TAK */
+  .karta { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 20px; width: 100%; max-width: 480px; }
+  .karta h1 { margin: 0; font-size: 3.5rem; padding: 0; }
+  .karta p { margin: 0; font-size: 1.1rem; }
+  .karta .blad { color: #590d22; min-height: 1.3em; font-size: 0.95rem; }
+  .karta input {
+    width: 100%; max-width: 320px;
+    font: inherit; font-weight: 600; font-size: 1.1rem;
+    padding: 12px 14px; border: 2px solid #590d22; border-radius: 10px;
+    background: #fff; color: #590d22; outline: none;
+  }
+  .karta input:focus { box-shadow: 0 0 0 3px rgba(89, 13, 34, 0.35); }
+  .karta button.dalej { font-size: 20px; margin-top: 6px; }
+  .opcje { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .opcja { font-size: 18px; transition: all 0.2s ease; }
+  .opcja.wybrana { background: #fff; color: #590d22; transform: scale(1.06); }
+  .podsumowanie { background: rgba(89, 13, 34, 0.9); padding: 16px 22px; border-radius: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <h1 id="pytanie">Czy chcesz pójść ze mną na randkę?</h1>
+  <div class="buttons" id="przyciski">
+    <button id="tak">TAK</button>
+    <button id="nie">NIE</button>
+  </div>
+
+<script>
+  let etap = 0;
+  let rozsun = 0;
+  const pytanie = document.getElementById('pytanie');
+  const przyciski = document.getElementById('przyciski');
+  const nie = document.getElementById('nie');
+  const tak = document.getElementById('tak');
+
+  // ---------- ekrany po kliknięciu TAK ----------
+  let wybor = { data: '', godzina: '', plany: [], wlasny: '' };
+
+  function pokazKalendarz() {
+    document.body.style.overflow = 'auto';
+    const d = new Date();
+    const dzis = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    document.body.innerHTML =
+      '<div class="karta">' +
+        '<h1 style="font-size:2.4rem">Świetna decyzja :)</h1>' +
+        '<p>Wybierz dzień i godzinę:</p>' +
+        '<input type="date" id="data" min="' + dzis + '">' +
+        '<input type="time" id="godzina" value="18:00">' +
+        '<p class="blad" id="blad"></p>' +
+        '<button class="dalej" id="dalej">Dalej</button>' +
+      '</div>';
+    document.getElementById('dalej').addEventListener('click', () => {
+      const data = document.getElementById('data').value;
+      const godzina = document.getElementById('godzina').value;
+      if (!data || !godzina) {
+        document.getElementById('blad').textContent = 'Wybierz dzień i godzinę :)';
+        return;
+      }
+      wybor.data = data;
+      wybor.godzina = godzina;
+      pokazPlan();
+    });
+  }
+
+  function pokazPlan() {
+    const opcje = ['🍕 Jedzonko', '🎬 Kino', '⛸️ Łyżwy'];
+    document.body.innerHTML =
+      '<div class="karta">' +
+        '<h1 style="font-size:2.4rem">Plan randki</h1>' +
+        '<p>Co robimy? Możesz wybrać kilka rzeczy:</p>' +
+        '<div class="opcje" id="opcje"></div>' +
+        '<p id="etykieta">Albo wpisz swój pomysł:</p>' +
+        '<input type="text" id="wlasny" placeholder="Np. spacer, planszówki...">' +
+        '<p class="blad" id="blad"></p>' +
+        '<button class="dalej" id="dalej">Dalej</button>' +
+      '</div>';
+    const kontener = document.getElementById('opcje');
+    opcje.forEach(nazwa => {
+      const b = document.createElement('button');
+      b.className = 'opcja';
+      b.textContent = nazwa;
+      b.addEventListener('click', () => {
+        b.classList.toggle('wybrana');
+        odswiezPole();
+      });
+      kontener.appendChild(b);
+    });
+
+    // gdy wybrane jest jedzonko, pole pyta o ulubione jedzenie
+    let trybJedzenie = false;
+    function odswiezPole() {
+      const jedzenie = [...document.querySelectorAll('.opcja.wybrana')].some(b => b.textContent.includes('Jedzonko'));
+      if (jedzenie === trybJedzenie) return;
+      trybJedzenie = jedzenie;
+      const pole = document.getElementById('wlasny');
+      pole.value = '';
+      document.getElementById('etykieta').textContent = jedzenie ? 'Masz jakieś ulubione?' : 'Albo wpisz swój pomysł:';
+      pole.placeholder = jedzenie ? 'Np. pizza, sushi, burgery...' : 'Np. spacer, planszówki...';
+    }
+    document.getElementById('dalej').addEventListener('click', () => {
+      const plany = [...document.querySelectorAll('.opcja.wybrana')].map(b => b.textContent);
+      const wlasny = document.getElementById('wlasny').value.trim();
+      if (plany.length === 0 && !wlasny) {
+        document.getElementById('blad').textContent = 'Wybierz coś albo wpisz własny pomysł :)';
+        return;
+      }
+      if (trybJedzenie) {
+        // wpisane jedzenie dopisujemy do opcji Jedzonko
+        const i = plany.findIndex(n => n.includes('Jedzonko'));
+        if (wlasny) plany[i] += ' (ulubione: ' + wlasny + ')';
+        wybor.wlasny = '';
+      } else {
+        wybor.wlasny = wlasny;
+      }
+      wybor.plany = plany;
+      pokazPodsumowanie();
+    });
+  }
+
+  function pokazPodsumowanie() {
+    const termin = new Date(wybor.data + 'T' + wybor.godzina).toLocaleDateString('pl-PL', {
+      weekday: 'long', day: 'numeric', month: 'long'
+    });
+    const lista = wybor.plany.slice();
+    if (wybor.wlasny) lista.push('✨ ' + wybor.wlasny);
+    document.body.innerHTML =
+      '<div class="karta">' +
+        '<h1 style="font-size:2.6rem">Do zobaczenia!</h1>' +
+        '<div class="podsumowanie">' +
+          '<div id="termin"></div>' +
+          '<div id="lista"></div>' +
+        '</div>' +
+      '</div>';
+    const terminTekst = termin + ', godz. ' + wybor.godzina;
+    const planTekst = lista.join(', ');
+    document.getElementById('termin').textContent = '📅 ' + terminTekst;
+    document.getElementById('lista').textContent = 'Plan: ' + planTekst;
+    wyslijPowiadomienie(terminTekst, planTekst);
+  }
+
+  // powiadomienie e-mail (przez usługę FormSubmit, bez własnego serwera)
+  const ADRES_EMAIL = 'wojteklego13@icloud.com';
+  const NTFY_TEMAT = 'randka-wojtek-f8675bb5d88f7c1ba0481f98'; // nazwa kanału w aplikacji ntfy
+  let wyslano = false;
+  function wyslijPowiadomienie(termin, plan) {
+    if (wyslano) return;
+    wyslano = true;
+    fetch('https://formsubmit.co/ajax/' + ADRES_EMAIL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: 'Randka: ona powiedziała TAK! 🎉',
+        _template: 'table',
+        _captcha: 'false',
+        Termin: termin,
+        Plan: plan
+      })
+    }).catch(() => {}); // jeśli się nie uda, strona działa dalej bez błędu
+
+    // powiadomienie push na telefon (aplikacja ntfy) - zwykłe zapytanie GET,
+    // działa też z pliku otwartego z telefonu i bez problemów z CORS
+    const adres = 'https://ntfy.sh/' + NTFY_TEMAT + '/publish'
+      + '?title=' + encodeURIComponent('Randka: ona powiedziała TAK! 🎉')
+      + '&tags=tada&priority=4'
+      + '&message=' + encodeURIComponent(termin + '\nPlan: ' + plan);
+    new Image().src = adres;
+  }
+
+  tak.addEventListener('click', pokazKalendarz);
+
+  nie.addEventListener('click', () => {
+    etap++;
+    if (etap === 1) {
+      pytanie.textContent = 'Nie? A pewnie guziki zrobiłem za małe';
+      tak.classList.add('big');
+      nie.classList.add('small');
+    } else if (etap === 2) {
+      pytanie.textContent = 'Wiedziałem, że są za blisko siebie';
+      rozsun = window.innerWidth * 0.3;
+      tak.style.transform = 'translateX(' + (-rozsun) + 'px)';
+      nie.style.transform = 'translateX(' + rozsun + 'px)';
+    } else if (etap === 3) {
+      pytanie.textContent = 'Teraz będzie łatwiej kliknąć';
+      // 1) zmierz docelowe pozycje bez animacji
+      tak.style.transition = 'none';
+      nie.style.transition = 'none';
+      tak.style.transform = 'none';
+      nie.style.transform = 'none';
+      tak.classList.remove('big');
+      tak.classList.add('huge');
+      nie.classList.remove('small');
+      nie.classList.add('corner');
+      const rt = tak.getBoundingClientRect();
+      const rn = nie.getBoundingClientRect();
+      const takDx = window.innerWidth / 2 - (rt.left + rt.width / 2);
+      const nieDx = window.innerWidth - 10 - rn.right;
+      const nieDy = window.innerHeight - 10 - rn.bottom;
+
+      // 2) wróć do stanu wyjściowego
+      tak.classList.remove('huge');
+      tak.classList.add('big');
+      nie.classList.remove('corner');
+      nie.classList.add('small');
+      tak.style.transform = 'translateX(' + (-rozsun) + 'px)';
+      nie.style.transform = 'translateX(' + rozsun + 'px)';
+      tak.getBoundingClientRect(); // wymuś przeliczenie
+
+      // 3) animuj do stanu docelowego
+      tak.style.transition = '';
+      nie.style.transition = '';
+      tak.classList.remove('big');
+      tak.classList.add('huge');
+      nie.classList.remove('small');
+      nie.classList.add('corner');
+      tak.style.transform = 'translateX(' + takDx + 'px)';
+      nie.style.transform = 'translate(' + nieDx + 'px,' + nieDy + 'px)';
+    }
+  });
+</script>
+</body>
+</html>
